@@ -194,7 +194,7 @@ def add_features(df):
     df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
         
     # Gyro-accel ratio
-    # (because why not)
+    # (because why not. ¯\_(ツ)_/¯)
     df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8) # + 1e-8 to avoid div by 0
     
     # Jerk
