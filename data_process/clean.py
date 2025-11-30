@@ -168,7 +168,7 @@ model.fit(
     X_train, y_train,
     validation_data=(X_test, y_test),
     epochs=30,
-    batch_size=4,
+    batch_size=16,
     verbose=1,
     callbacks=[model_checkpoint_callback]
 )

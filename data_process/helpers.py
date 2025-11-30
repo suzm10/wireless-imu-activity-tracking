@@ -42,6 +42,10 @@ def create_df(filename, write=False):
                            'gyro_x': gyro_x, 
                            'gyro_y': gyro_y, 
                            'gyro_z': gyro_z})
+        
+        df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
+        df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
+
         cleaned_df = df.interpolate(method="linear", limit_direction="both")
         name = "../csvs2/" + filename.split("/")[-1].split(".")[0] + "_df.csv"
         if write:
@@ -155,3 +159,56 @@ def smooth_and_resample(df, target_len=300, window_length=11, polyorder=2):
     )
     print(resampled.head())
     return resampled
+
+def segment_into_reps(df, exercise_type, min_rep_length=15, max_rep_length=200):
+    """
+    Segment a recording into individual reps using activity detection.
+    Uses magnitude to be rotation-invariant.
+    """
+    # Add features first
+    from scipy.signal import find_peaks
+    
+    if 'accel_mag' not in df.columns:
+        df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
+    
+    # Find peaks in acceleration (top of squat)
+    peaks, _ = find_peaks(df['accel_mag'], distance=40, prominence=0.5)
+    
+    print(f"Peaks found: {len(peaks)}")
+    
+    reps = []
+    
+    # Each rep is from one peak to the next
+    for i in range(len(peaks) - 1):
+        start = peaks[i]
+        end = peaks[i + 1]
+        rep_df = df.iloc[start:end].copy()
+        rep_len = len(rep_df)
+        
+        if min_rep_length <= rep_len <= max_rep_length:
+            reps.append(rep_df)
+    
+    print(f"Reps extracted: {len(reps)}")
+    return reps
+
+def add_barbell_features(df):
+    """Features accounting for IMU rotation and Y-Z dominance"""
+    
+    # Magnitudes
+    if 'accel_mag' not in df.columns:
+        df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
+    if 'gyro_mag' not in df.columns:
+        df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
+    
+    # Just these two key features:
+    
+    # 1. Gyro-accel ratio (squats have low rotation)
+    df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8)
+    
+    # 2. Jerk (explosive vs controlled)
+    df['jerk_y'] = df['accel_y'].diff().fillna(0)
+    df['jerk_z'] = df['accel_z'].diff().fillna(0)
+    df['jerk_mag'] = np.sqrt(df['jerk_y']**2 + df['jerk_z']**2)
+    df['jerk_smooth'] = df['jerk_mag'].rolling(window=5, center=True).mean().fillna(0)
+    
+    return df

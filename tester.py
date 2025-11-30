@@ -2,20 +2,24 @@ import asyncio
 from bleak import BleakClient, BleakScanner
 import bleak
 
-UART_RX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E" # RX characteristic UUID - shouldn't need to change?
-FILENAME_BASE="shoulder_jake_set2_reps10_actual"
+#UART_RX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E" # RX characteristic UUID - shouldn't need to change?
+UART_RX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+FILENAME_BASE="velostat_test_2_5lb_TEST"
 
 def handle_rx(sender, data):
     try:
         text = data.decode()
         text = text.strip()
-        number, time, ax, ay, az, gx, gy, gz, mx, my, mz = text.split(',')
+        number, time, velostat, ax, ay, az, gx, gy, gz, mx, my, mz = text.split(',')
+        #time, val = text.split(',')
     except Exception:
         print(f"text:  {text} could not be decoded")
     try:
-        with open(FILENAME_BASE + f"{number}" + ".csv", "a") as f:
+        #with open(FILENAME_BASE + f"{number}" + ".csv", "a") as f:
+        #    f.write(text + "\n")
+        with open(FILENAME_BASE + ".csv", "a") as f:
             f.write(text + "\n")
-        #print(text)
+        print(text)
     except Exception:
         print("FAIL: ", text)
         pass
