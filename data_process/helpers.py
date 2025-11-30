@@ -168,11 +168,8 @@ def segment_into_reps(df, exercise_type, min_rep_length=15, max_rep_length=200):
     # Add features first
     from scipy.signal import find_peaks
     
-    if 'accel_mag' not in df.columns:
-        df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
-    
     # Find peaks in acceleration (top of squat)
-    peaks, _ = find_peaks(df['accel_mag'], distance=40, prominence=0.5)
+    peaks, _ = find_peaks(df['accel_mag'], distance=40, prominence=5)
     
     print(f"Peaks found: {len(peaks)}")
     
@@ -199,16 +196,14 @@ def add_barbell_features(df):
         df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
     if 'gyro_mag' not in df.columns:
         df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
+        
+    # 1. Gyro-accel ratio
+    #df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8)
     
-    # Just these two key features:
-    
-    # 1. Gyro-accel ratio (squats have low rotation)
-    df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8)
-    
-    # 2. Jerk (explosive vs controlled)
-    df['jerk_y'] = df['accel_y'].diff().fillna(0)
-    df['jerk_z'] = df['accel_z'].diff().fillna(0)
-    df['jerk_mag'] = np.sqrt(df['jerk_y']**2 + df['jerk_z']**2)
-    df['jerk_smooth'] = df['jerk_mag'].rolling(window=5, center=True).mean().fillna(0)
+    # 2. Jerk
+    #df['jerk_y'] = df['accel_y'].diff().fillna(0)
+    #df['jerk_z'] = df['accel_z'].diff().fillna(0)
+    #df['jerk_mag'] = np.sqrt(df['jerk_y']**2 + df['jerk_z']**2)
+    #df['jerk_smooth'] = df['jerk_mag'].rolling(window=5, center=True).mean().fillna(0)
     
     return df
