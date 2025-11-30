@@ -164,6 +164,7 @@ def segment_into_reps(df, min_rep_length=15, max_rep_length=200):
     # Use find_peaks with the total magnitude of acceleration
     # Make sure to set prominence to a decent value to avoid false positives
     # NOTE: Distance between peaks may vary! Needs resampling!
+    # NOTE: Distance and prominence are admittedly magic numbers, but works ok
     peaks, _ = find_peaks(df['accel_mag'], distance=40, prominence=5)
         
     reps = []
@@ -180,8 +181,6 @@ def segment_into_reps(df, min_rep_length=15, max_rep_length=200):
         if min_rep_length <= rep_len <= max_rep_length:
             reps.append(rep_df)
     
-    print("REPS: ", len(reps))
-
     return reps
 
 # Adding features to the dataset to provide more information to the models
