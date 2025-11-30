@@ -160,7 +160,7 @@ def smooth_and_resample(df, target_len=300, window_length=11, polyorder=2):
     print(resampled.head())
     return resampled
 
-def segment_into_reps(df, exercise_type, min_rep_length=15, max_rep_length=200):
+def segment_into_reps(df, min_rep_length=15, max_rep_length=200):
     """
     Segment a recording into individual reps using activity detection.
     Uses magnitude to be rotation-invariant.
