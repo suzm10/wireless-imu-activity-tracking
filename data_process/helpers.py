@@ -42,15 +42,12 @@ def create_df(filename, write=False):
                            'gyro_x': gyro_x, 
                            'gyro_y': gyro_y, 
                            'gyro_z': gyro_z})
-        
-        df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
-        df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
 
         cleaned_df = df.interpolate(method="linear", limit_direction="both")
         name = "../csvs2/" + filename.split("/")[-1].split(".")[0] + "_df.csv"
         if write:
             cleaned_df.to_csv(name, index=False)
-        print(cleaned_df.head())
+        #print(cleaned_df.head())
         return cleaned_df
     
 def get_peaks_and_valleys(df, dist=100):
@@ -157,53 +154,60 @@ def smooth_and_resample(df, target_len=300, window_length=11, polyorder=2):
     resampled = pd.DataFrame(
         {col: np.interp(new_idx, np.arange(original_len), smoothed[col]) for col in smoothed.columns}
     )
-    print(resampled.head())
+    #print(resampled.head())
     return resampled
 
+# Use find_peaks to segment data into individual reps
 def segment_into_reps(df, min_rep_length=15, max_rep_length=200):
-    """
-    Segment a recording into individual reps using activity detection.
-    Uses magnitude to be rotation-invariant.
-    """
-    # Add features first
     from scipy.signal import find_peaks
     
-    # Find peaks in acceleration (top of squat)
+    # Use find_peaks with the total magnitude of acceleration
+    # Make sure to set prominence to a decent value to avoid false positives
+    # NOTE: Distance between peaks may vary! Needs resampling!
     peaks, _ = find_peaks(df['accel_mag'], distance=40, prominence=5)
-    
-    print(f"Peaks found: {len(peaks)}")
-    
-    reps = []
-    
-    # Each rep is from one peak to the next
-    for i in range(len(peaks) - 1):
-        start = peaks[i]
-        end = peaks[i + 1]
-        rep_df = df.iloc[start:end].copy()
-        rep_len = len(rep_df)
         
+    reps = []
+
+    # Iterate through each pair of peaks we have    
+    for i in range(len(peaks) - 1):
+        start, end = peaks[i], peaks[i+1]
+
+        # Get the data points in between the peaks
+        rep_df = df.iloc[start:end].copy()
+        
+        # Append to result if the distance between peaks within the specified bounds
+        rep_len = len(rep_df)
         if min_rep_length <= rep_len <= max_rep_length:
             reps.append(rep_df)
     
-    print(f"Reps extracted: {len(reps)}")
+    print("REPS: ", len(reps))
+
     return reps
 
-def add_barbell_features(df):
-    """Features accounting for IMU rotation and Y-Z dominance"""
-    
+# Adding features to the dataset to provide more information to the models
+# Restricting to rotation-invariant methods since we cannot confirm orientation of barbell
+def add_features(df):  
+
     # Magnitudes
-    if 'accel_mag' not in df.columns:
-        df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
-    if 'gyro_mag' not in df.columns:
-        df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
+    # (should be helpful given orientation is an unknown)
+    df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
+    df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
         
-    # 1. Gyro-accel ratio
-    #df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8)
+    # Gyro-accel ratio
+    # (because why not)
+    df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8) # + 1e-8 to avoid div by 0
     
-    # 2. Jerk
-    #df['jerk_y'] = df['accel_y'].diff().fillna(0)
-    #df['jerk_z'] = df['accel_z'].diff().fillna(0)
-    #df['jerk_mag'] = np.sqrt(df['jerk_y']**2 + df['jerk_z']**2)
-    #df['jerk_smooth'] = df['jerk_mag'].rolling(window=5, center=True).mean().fillna(0)
+    # Jerk
+    # (smoothing and resampling should help given some noisy data)
+    df['jerk_y'] = df['accel_y'].diff().fillna(0)
+    df['jerk_z'] = df['accel_z'].diff().fillna(0)
+
+    # Magnitude of the jerk
+    # (wait that sounds a bit funny)
+    df['jerk_mag'] = np.sqrt(df['jerk_y']**2 + df['jerk_z']**2)
+
+    # Smoothed jerk
+    # (and that sounds even worse)
+    df['jerk_smooth'] = df['jerk_mag'].rolling(window=5, center=True).mean().fillna(0)
     
     return df
