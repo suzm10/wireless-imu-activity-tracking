@@ -48,6 +48,11 @@ def create_df(filename, write=False):
             cleaned_df.to_csv(name, index=False)
         print(cleaned_df.head())
         return cleaned_df
+
+def segment_df(df, seconds=5):
+    print(df["timestamp"].iloc[0])
+    print(df["timestamp"].iloc[-1])
+    pass
     
 def get_peaks_and_valleys(df, dist=100):
     peaks, _ = find_peaks(df["accel_z"], height=0, distance=dist)
