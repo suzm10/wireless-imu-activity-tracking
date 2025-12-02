@@ -63,8 +63,8 @@ def get_peaks_and_valleys(df, dist=100):
     print(f"peakvals: {peakvals}")
     print(f"valleyvals: {valleyvals}")
 
-    print(f"peaks: {peaks}, peakvals: {peakvals}")
-    print(f"valleys: {valleys}, valleyvals: {valleyvals}")
+    print(f"peaks: {peaks}")
+    print(f"valleys: {valleys}")
     return peaks, valleys, peakvals, valleyvals
 
 def plot_df(df, title, peaks=None, valleys=None):
@@ -120,7 +120,12 @@ def get_num_reps(df, peaks, valleys):
     num_valid_valleys = len(valleyidxs) - len(valley_outlier_indices)
     num_valid_peaks = len(peakidxs) - len(peak_outlier_indices)
     print(f"num_valid_peaks: {num_valid_peaks}, num_valid_valleys: {num_valid_valleys}")
-    return start, end, num_valid_peaks, num_valid_valleys
+    if num_valid_peaks == 0:
+        return num_valid_valleys
+    elif num_valid_valleys == 0:
+        return num_valid_peaks
+    else:
+        return ((num_valid_peaks + num_valid_valleys) // 2)
 
     # Q1 = np.percentile(valleyvals, 90, method='midpoint')
     # print(Q1)
