@@ -4,7 +4,7 @@ import bleak
 
 #UART_RX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E" # RX characteristic UUID - shouldn't need to change?
 UART_RX_UUID = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
-FILENAME_BASE="velostat_test_2_5lb_TEST"
+FILENAME_BASE="timed_velostat_35_"
 
 def handle_rx(sender, data):
     try:

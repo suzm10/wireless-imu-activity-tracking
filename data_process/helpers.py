@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks, savgol_filter
+from scipy.fft import rfft, rfftfreq
 
 def create_df(filename, write=False):
     print(filename)
@@ -158,9 +159,8 @@ def smooth_and_resample(df, target_len=300, window_length=11, polyorder=2):
     return resampled
 
 # Use find_peaks to segment data into individual reps
-def segment_into_reps(df, min_rep_length=15, max_rep_length=200):
+def segment_into_reps(df, min_rep_length=500, max_rep_length=5000):
     from scipy.signal import find_peaks
-    
     # Use find_peaks with the total magnitude of acceleration
     # Make sure to set prominence to a decent value to avoid false positives
     # NOTE: Distance between peaks may vary! Needs resampling!
@@ -177,10 +177,11 @@ def segment_into_reps(df, min_rep_length=15, max_rep_length=200):
         rep_df = df.iloc[start:end].copy()
         
         # Append to result if the distance between peaks within the specified bounds
-        rep_len = len(rep_df)
-        if min_rep_length <= rep_len <= max_rep_length:
+        duration = rep_df['timestamp'].iloc[-1] - rep_df['timestamp'].iloc[0]
+
+        if min_rep_length <= duration <= max_rep_length:
             reps.append(rep_df)
-    
+
     return reps
 
 # Adding features to the dataset to provide more information to the models
@@ -191,13 +192,13 @@ def add_features(df):
     # (should be helpful given orientation is an unknown)
     df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
     df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
-        
+
     # Gyro-accel ratio
     # (because why not. ¯\_(ツ)_/¯)
-    df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8) # + 1e-8 to avoid div by 0
-    
-    # Jerk
-    # (smoothing and resampling should help given some noisy data)
+    #df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8) # + 1e-8 to avoid div by 0
+
+    ## Jerk
+    ## (smoothing and resampling should help given some noisy data)
     df['jerk_y'] = df['accel_y'].diff().fillna(0)
     df['jerk_z'] = df['accel_z'].diff().fillna(0)
 
@@ -205,8 +206,6 @@ def add_features(df):
     # (wait that sounds a bit funny)
     df['jerk_mag'] = np.sqrt(df['jerk_y']**2 + df['jerk_z']**2)
 
-    # Smoothed jerk
-    # (and that sounds even worse)
-    df['jerk_smooth'] = df['jerk_mag'].rolling(window=5, center=True).mean().fillna(0)
-    
+    df['acc_corr'] = np.corrcoef(df['accel_y'], df['accel_z'])[0, 1]
+
     return df
