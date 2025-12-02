@@ -162,27 +162,42 @@ def smooth_and_resample(df, target_len=300, window_length=11, polyorder=2):
 def segment_into_reps(df, min_rep_length=500, max_rep_length=5000):
     from scipy.signal import find_peaks
     # Use find_peaks with the total magnitude of acceleration
-    # Make sure to set prominence to a decent value to avoid false positives
-    # NOTE: Distance between peaks may vary! Needs resampling!
-    # NOTE: Distance and prominence are admittedly magic numbers, but works ok
-    peaks, _ = find_peaks(df['accel_mag'], distance=40, prominence=5)
-        
-    reps = []
 
-    # Iterate through each pair of peaks we have    
-    for i in range(len(peaks) - 1):
-        start, end = peaks[i], peaks[i+1]
+    # Set up a parameter grid for distance/prominence in find_peaks
+    # Intentionally set up from most strict to least strict
+    param_grid = []
+    for dist in range(120, 10, -5):
+        for prom in [1.5, 1.3, 1.1, 0.9, 0.7, 0.5, 0.3, 0.1]:
+            param_grid.append((dist, prom))
 
-        # Get the data points in between the peaks
-        rep_df = df.iloc[start:end].copy()
-        
-        # Append to result if the distance between peaks within the specified bounds
-        duration = rep_df['timestamp'].iloc[-1] - rep_df['timestamp'].iloc[0]
+    best_reps = None
+    best_diff = 10
 
-        if min_rep_length <= duration <= max_rep_length:
+    for distance, prominence in param_grid:
+        peaks, _ = find_peaks(df['accel_mag'], distance=distance, prominence=prominence)  
+        reps = []
+
+        # Iterate through each pair of peaks we have    
+        for i in range(len(peaks) - 1):
+            start, end = peaks[i], peaks[i+1]
+
+            # Get the data points in between the peaks
+            rep_df = df.iloc[start:end].copy()
+
             reps.append(rep_df)
 
-    return reps
+            # Perfect match! Use it
+            if len(reps) == 10:
+                return reps
+            
+            # Not quite a match, but save the closest one so far
+            elif abs(len(reps) - 10) < best_diff:
+                best_reps = reps
+                best_diff = abs(len(reps)-10)
+
+
+
+    return best_reps
 
 # Adding features to the dataset to provide more information to the models
 # Restricting to rotation-invariant methods since we cannot confirm orientation of barbell
@@ -195,7 +210,7 @@ def add_features(df):
 
     # Gyro-accel ratio
     # (because why not. ¯\_(ツ)_/¯)
-    #df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8) # + 1e-8 to avoid div by 0
+    df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8) # + 1e-8 to avoid div by 0
 
     ## Jerk
     ## (smoothing and resampling should help given some noisy data)
@@ -206,6 +221,6 @@ def add_features(df):
     # (wait that sounds a bit funny)
     df['jerk_mag'] = np.sqrt(df['jerk_y']**2 + df['jerk_z']**2)
 
-    df['acc_corr'] = np.corrcoef(df['accel_y'], df['accel_z'])[0, 1]
+    df['accel_corr'] = np.corrcoef(df['accel_y'], df['accel_z'])[0, 1]
 
     return df
