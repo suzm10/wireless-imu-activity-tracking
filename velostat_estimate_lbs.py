@@ -2,7 +2,7 @@ from scipy.optimize import curve_fit
 import numpy as np
 
 def polynomial_func(reading, a, b, c):
-    return a + b * reading + c * reading**2
+    return a * reading ** 2 + b * reading + c
 
 def get_estimate(number):
     baseline_weights = np.array([0, 2.5, 5, 10, 25])
