@@ -2,12 +2,18 @@
 
 Our data is currently collected with the IMU attached to the center of the barbell.
 
-## Initial Data Analysis
+## Data Analysis
+
+Done in ``feature.ipynb``
 
 ### Bicep Curl
 
-![alt text](image.png)
+What the data looks like:
+
+![alt text](bicep_curl.png)
 
 ### Confusion Matrix
 
-![alt text](image-1.png)
+87% classification accuracy:
+
+![alt text](confusion_matrix.png)
