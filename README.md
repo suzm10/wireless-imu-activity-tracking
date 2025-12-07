@@ -4,7 +4,7 @@ Our data is currently collected with the IMU attached to the center of the barbe
 
 ## Data Analysis
 
-Done in ``feature.ipynb``
+Done in ``data_process/features.ipynb``
 
 ### Bicep Curl
 
