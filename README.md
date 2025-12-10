@@ -6,7 +6,7 @@ Our data is currently collected with the IMU attached to the center of the barbe
 
 We used an Adafruit Feather nRF52840 Sense for the purposes of data collection, leveraging components such as its accelerometer, gyroscope, and analog-to-digital signal reading capabilities.
 
-While the format of the CSV output has evolved since the beginning (e.g. how the data in ``data2/`` lacks any velostat/weight readings and magnetometer readings), the final version reflected in ``velostat/`` has the following format:
+While the format of the CSV output has evolved since the beginning (e.g. how the data in ``data2/`` lacks any velostat/weight readings and magnetometer readings), the final version reflected in ``velostat/`` (barring the raw analog value not being converted to estimated weight) has the following format:
 
 ```
 nodeNum,timestamp,estWeight,accelX,accelY,accelZ,gyroX,gyroY,gyroZ,magX,magY,magZ
