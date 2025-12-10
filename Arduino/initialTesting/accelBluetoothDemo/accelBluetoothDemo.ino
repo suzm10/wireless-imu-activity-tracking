@@ -19,7 +19,6 @@ void setup() {
   Serial.begin(115200);
 
   strip.setBrightness(10);
-  //strip.show();
 
   // Initialize IMU to get Accel/Gyro readings
   if (!lsm6ds33.begin_I2C()) {
@@ -41,8 +40,7 @@ void setup() {
   lis3mdl.setDataRate(LIS3MDL_DATARATE_80_HZ);
 
   // If only I knew about this earlier on...
-  // Seems to set the connection interval
-  // NOTE: UPDATE MTU WITH NRF CONNECT APP AS NEEDED!
+  // Seems to set the connection/message interval
   Bluefruit.configPrphBandwidth(BANDWIDTH_MAX);
 
   // Initialize BLE
@@ -59,7 +57,7 @@ void setup() {
 
   Serial.println("BLE IMU peripheral started");
 
-
+  // Desginate velostat analog pin
   pin = A5;
 }
 
@@ -69,6 +67,7 @@ void loop() {
   sensors_event_t temp;
   sensors_event_t mag;
 
+  // Read the analog pin for velostat and get the estimated weight
   int velostat = analogRead(pin);
   double rawWeight = 0.000333 * pow(velostat, 2.0) + -0.268908 * double(velostat) + 54.396;
   double estimatedWeight = max(0, round(rawWeight / 2.5) * 2.5);
@@ -78,6 +77,7 @@ void loop() {
   Serial.println(velostat);
 
   // Fetch the current time for timestamp purposes
+  // (Yes, I now know using millis() was a mistake... -JG)
   uint32_t time = millis();
 
   // Get the accel/gyro/mag measurements from the sensor
