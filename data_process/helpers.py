@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks, savgol_filter
+from scipy.fft import rfft, rfftfreq
 
 def create_df(filename, write=False):
     print(filename)
@@ -42,11 +43,12 @@ def create_df(filename, write=False):
                            'gyro_x': gyro_x, 
                            'gyro_y': gyro_y, 
                            'gyro_z': gyro_z})
+
         cleaned_df = df.interpolate(method="linear", limit_direction="both")
         name = "../csvs2/" + filename.split("/")[-1].split(".")[0] + "_df.csv"
         if write:
             cleaned_df.to_csv(name, index=False)
-        print(cleaned_df.head())
+        #print(cleaned_df.head())
         return cleaned_df
 
 def segment_df(df, seconds=5):
@@ -163,5 +165,72 @@ def smooth_and_resample(df, target_len=300, window_length=11, polyorder=2):
     resampled = pd.DataFrame(
         {col: np.interp(new_idx, np.arange(original_len), smoothed[col]) for col in smoothed.columns}
     )
-    print(resampled.head())
+    #print(resampled.head())
     return resampled
+
+# Use find_peaks to segment data into individual reps
+def segment_into_reps(df, min_rep_length=500, max_rep_length=5000):
+    from scipy.signal import find_peaks
+    # Use find_peaks with the total magnitude of acceleration
+
+    # Set up a parameter grid for distance/prominence in find_peaks
+    # Intentionally set up from most strict to least strict
+    param_grid = []
+    for dist in range(120, 10, -5):
+        for prom in [1.5, 1.3, 1.1, 0.9, 0.7, 0.5, 0.3, 0.1]:
+            param_grid.append((dist, prom))
+
+    best_reps = None
+    best_diff = 10
+
+    for distance, prominence in param_grid:
+        peaks, _ = find_peaks(df['accel_mag'], distance=distance, prominence=prominence)  
+        reps = []
+
+        # Iterate through each pair of peaks we have    
+        for i in range(len(peaks) - 1):
+            start, end = peaks[i], peaks[i+1]
+
+            # Get the data points in between the peaks
+            rep_df = df.iloc[start:end].copy()
+
+            reps.append(rep_df)
+
+            # Perfect match! Use it
+            if len(reps) == 10:
+                return reps
+            
+            # Not quite a match, but save the closest one so far
+            elif abs(len(reps) - 10) < best_diff:
+                best_reps = reps
+                best_diff = abs(len(reps)-10)
+
+
+
+    return best_reps
+
+# Adding features to the dataset to provide more information to the models
+# Restricting to rotation-invariant methods since we cannot confirm orientation of barbell
+def add_features(df):  
+
+    # Magnitudes
+    # (should be helpful given orientation is an unknown)
+    df['accel_mag'] = np.sqrt(df['accel_x']**2 + df['accel_y']**2 + df['accel_z']**2)
+    df['gyro_mag'] = np.sqrt(df['gyro_x']**2 + df['gyro_y']**2 + df['gyro_z']**2)
+
+    # Gyro-accel ratio
+    # (because why not. ¯\_(ツ)_/¯)
+    df['gyro_accel_ratio'] = df['gyro_mag'] / (df['accel_mag'] + 1e-8) # + 1e-8 to avoid div by 0
+
+    ## Jerk
+    ## (smoothing and resampling should help given some noisy data)
+    df['jerk_y'] = df['accel_y'].diff().fillna(0)
+    df['jerk_z'] = df['accel_z'].diff().fillna(0)
+
+    # Magnitude of the jerk
+    # (wait that sounds a bit funny)
+    df['jerk_mag'] = np.sqrt(df['jerk_y']**2 + df['jerk_z']**2)
+
+    df['accel_corr'] = np.corrcoef(df['accel_y'], df['accel_z'])[0, 1]
+
+    return df

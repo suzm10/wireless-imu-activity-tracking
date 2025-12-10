@@ -5,23 +5,19 @@
 #include <Adafruit_NeoPixel.h>
 
 #define NEOPIXELPIN 8
-#define NODENUMBER 2
+#define NODENUMBER 1
 
 BLEUart bleuart;
 Adafruit_LSM6DS33 lsm6ds33;
 Adafruit_LIS3MDL lis3mdl;
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(1, NEOPIXELPIN, NEO_GRB + NEO_KHZ800);
 
+int pin;
+
 
 void setup() {
   Serial.begin(115200);
 
-  // Set up the fancy LED color to tell nodes apart visually
-  //if (NODENUMBER == 1) {
-  //  strip.setPixelColor(0, 0, 255, 255); // Cyan
-  //} else {
-  //  strip.setPixelColor(0, 255, 255, 0); // Orange/Yellow?
-  //}
   strip.setBrightness(10);
   //strip.show();
 
@@ -62,6 +58,9 @@ void setup() {
   Bluefruit.Advertising.start(0);
 
   Serial.println("BLE IMU peripheral started");
+
+
+  pin = A5;
 }
 
 void loop() {
@@ -70,34 +69,32 @@ void loop() {
   sensors_event_t temp;
   sensors_event_t mag;
 
+  int velostat = analogRead(pin);
+  double rawWeight = 0.000333 * pow(velostat, 2.0) + -0.268908 * double(velostat) + 54.396;
+  double estimatedWeight = max(0, round(rawWeight / 2.5) * 2.5);
+  if (velostat < 350) {
+    estimatedWeight = -1.0; // Insufficient weight compared to baseline readings
+  }
+  Serial.println(velostat);
+
   // Fetch the current time for timestamp purposes
   uint32_t time = millis();
 
   // Get the accel/gyro/mag measurements from the sensor
   lsm6ds33.getEvent(&accel, &gyro, &temp);
   lis3mdl.getEvent(&mag);
-  
-  // Organize values into an array of floats/chars for easy loop access
-  float values[9] = {
-    accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
-    gyro.gyro.x, gyro.gyro.y, gyro.gyro.z,
-    mag.magnetic.x, mag.magnetic.y, mag.magnetic.z
-  };
-
-  char types[9][3] = {
-    "AX", "AY", "AZ", "GX", "GY", "GZ", "MX", "MY", "MZ"
-  };
 
   // Declare our buffer
   char buf[128];
 
   // Send via BLE UART
   if (Bluefruit.connected() && bleuart.notifyEnabled()) {
-    strip.setPixelColor(0, 0, 255, 0);
+    strip.setPixelColor(0, 0, 255, 0); // Green
     strip.show();
-    snprintf(buf, 128, "%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+    snprintf(buf, 128, "%d,%d,%d,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
       NODENUMBER,
       time,
+      estimatedWeight,
       accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
       gyro.gyro.x, gyro.gyro.y, gyro.gyro.z,
       mag.magnetic.x, mag.magnetic.y, mag.magnetic.z
